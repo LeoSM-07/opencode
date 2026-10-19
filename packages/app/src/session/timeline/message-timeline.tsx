@@ -398,11 +398,20 @@ function MessageTimelineView(
     })
   })
 
+  const [workingRef, setWorkingRef] = createSignal<HTMLDivElement>()
+
+  // Working fades as parts start and finish, but appears steady when switching sessions.
+  const workingPresence = createAnimatedPresence(
+    () => (showWorking() ? true : undefined),
+    () => workingRef() ?? null,
+    sessionID,
+  )
+
   // Undelivered input waits below the work the model has seen, so live status moves into the row above it.
   const activityRow = createMemo(() => projection.rows().some((row) => Predicate.isTagged(row, "Activity")))
 
   const activity = () => (
-    <Show when={showWorking() || backgroundHintPresence.present()}>
+    <Show when={workingPresence.present() || backgroundHintPresence.present()}>
       <div
         classList={{
           "min-w-0 w-full max-w-full": true,
@@ -410,8 +419,18 @@ function MessageTimelineView(
         }}
       >
         <div class={`flex h-9 items-center gap-2 pt-3 text-[13px] font-[530] leading-text-compact ${turnPadding()}`}>
-          <Show when={showWorking()}>
-            <div data-component="session-working" role="status">
+          <Show when={workingPresence.present()}>
+            <div
+              ref={setWorkingRef}
+              data-component="session-working"
+              role="status"
+              classList={{
+                "animate-in fade-in duration-150 ease-[cubic-bezier(.2,.8,.2,1)]":
+                  workingPresence.animate() && workingPresence.show(),
+                "animate-out fade-out fill-mode-forwards duration-[110ms] ease-[cubic-bezier(.4,0,1,1)]":
+                  workingPresence.animate() && !workingPresence.show(),
+              }}
+            >
               <TextShimmer text={language.t("session.timeline.working")} active />
             </div>
           </Show>
