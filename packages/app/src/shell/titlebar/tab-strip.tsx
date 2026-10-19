@@ -35,6 +35,7 @@ function SessionTabSlot(props: {
   onRename: (title: string) => Promise<void>
   onNavigate: (element: HTMLDivElement) => void
   onClose: () => void
+  onIntent: (hovered: boolean) => void
 }) {
   const sortable = useSortable({
     get id() {
@@ -59,6 +60,8 @@ function SessionTabSlot(props: {
         "w-56 min-w-7 max-w-56 flex-shrink": props.orientation === "horizontal",
         "w-full shrink-0": props.orientation === "vertical",
       }}
+      onPointerEnter={() => props.onIntent(true)}
+      onPointerLeave={() => props.onIntent(false)}
     >
       <TabNavItem
         ref={(el) => {
@@ -176,6 +179,20 @@ function SessionTabEntry(props: {
     onCleanup(() => window.clearTimeout(timer))
   })
 
+  // A pointer resting on a tab usually clicks it next, so its transcript loads during the dwell. Passing over loads nothing.
+  let intent: number | undefined
+
+  const hover = (hovered: boolean) => {
+    window.clearTimeout(intent)
+    const ctx = props.serverCtx
+    const value = session()
+
+    if (!hovered || !ctx || !value || props.active) return
+    intent = window.setTimeout(() => void ctx.data.session.message.sync(value.id).catch(() => undefined), 100)
+  }
+
+  onCleanup(() => window.clearTimeout(intent))
+
   createEffect(() => {
     const value = session()
 
@@ -215,6 +232,7 @@ function SessionTabEntry(props: {
         onRename={rename}
         onNavigate={props.onNavigate}
         onClose={props.onClose}
+        onIntent={hover}
       />
     </Show>
   )

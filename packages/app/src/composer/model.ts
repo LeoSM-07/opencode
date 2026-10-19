@@ -351,9 +351,11 @@ export function createComposerModel(adapter: ComposerAdapter, options?: { queue?
       const existing = pathImages.get(path)
 
       if (existing) return existing
+
       const url = readLocalImage(serverSDK.api, sdk().directory, path, pathImageReads.signal)
         .then((blob) => blob && URL.createObjectURL(blob))
         .catch(() => undefined)
+
       pathImages.set(path, url)
       // A failed read retries the next time the attachment shows.
       void url.then((value) => value || pathImages.delete(path))
@@ -428,8 +430,15 @@ export function createComposerModel(adapter: ComposerAdapter, options?: { queue?
           : undefined
       },
       variant: {
-        options: () => variants().map((value) => ({ id: value, label: value })),
-        current: () => adapter.controls().model.selection.variant.current() ?? "default",
+        options: () => {
+          const preview = adapter.controls().model.preview
+
+          return (preview ? ["default", ...preview.variants] : variants()).map((value) => ({ id: value, label: value }))
+        },
+        current: () =>
+          adapter.controls().model.preview?.variant ??
+          adapter.controls().model.selection.variant.current() ??
+          "default",
         onSelect: (value) => adapter.controls().model.selection.variant.set(value === "default" ? undefined : value),
         keybind: () => command.keybindParts("model.variant.cycle"),
       },

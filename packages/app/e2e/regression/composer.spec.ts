@@ -87,7 +87,7 @@ test("a catalog refresh cannot replace an existing session's model", async ({ pa
   ])
 })
 
-test("an existing session's model waits for its agent instead of showing a fallback", async ({ page }) => {
+test("an existing session's model never shows a fallback while its agent loads", async ({ page }) => {
   const sessionID = "ses_agent_pending"
   await mockWorkspace(page, {
     name: "AgentPending",
@@ -101,6 +101,21 @@ test("an existing session's model waits for its agent instead of showing a fallb
     await route.fallback()
   })
 
+  // Every chip text painted from the first frame, so a fallback shown for even one frame fails the test.
+  await page.addInitScript(() => {
+    const seen = new Set<string>()
+    window.__chipTexts = seen
+
+    const tick = () => {
+      const text = document.querySelector('[data-action="composer-model"]')?.textContent
+
+      if (text) seen.add(text)
+      requestAnimationFrame(tick)
+    }
+
+    requestAnimationFrame(tick)
+  })
+
   const catalog = ["/api/model", "/api/provider", "/api/config"].map((path) =>
     page.waitForResponse((response) => new URL(response.url()).pathname === path),
   )
@@ -110,11 +125,20 @@ test("an existing session's model waits for its agent instead of showing a fallb
   await expect(page.locator('[data-component="composer-editor"]')).toBeEditable()
 
   const control = page.locator('[data-action="composer-model"]')
-  // The recent model must not stand in for the session's model while its agent is unresolved.
-  await expect(control).toBeHidden()
+  // The recent model must not stand in for the session's model while its agent is unresolved. The chip may stay
+  // hidden or name the session's own model, which the loaded selection then keeps.
+  await page.waitForTimeout(300)
   agents.resolve()
   await expect(control).toHaveText("OpenCode / Alpha")
+  await page.waitForTimeout(300)
+  expect(await page.evaluate(() => [...(window.__chipTexts ?? [])])).toEqual(["OpenCode / Alpha"])
 })
+
+declare global {
+  interface Window {
+    __chipTexts?: Set<string>
+  }
+}
 
 test("names a Console-managed provider without its workspace unless a direct connection shares it", async ({
   page,
@@ -375,6 +399,7 @@ test("keeps focus in a dialog that replaces the model dialog and returns it to t
     name: "ComposerDialogFocus",
     provider: provider({ id: "paid", name: "Paid", cost: { input: 1, output: 1 } }),
   })
+
   await editor.fill("keep me")
   await editor.press("End")
   await editor.press("ArrowLeft")

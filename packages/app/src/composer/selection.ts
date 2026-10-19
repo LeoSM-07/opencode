@@ -5,29 +5,31 @@ import { useLocal, type ModelKey, type ModelSelection } from "@/providers/models
 import { useWorkspaceLocation } from "@/workspaces/location"
 import { useProviders } from "@/providers/catalog/providers"
 import { useData } from "@/runtime/server/current"
-import { normalizeAgentList } from "@/runtime/server/global-sync/utils"
+import { normalizeAgentList, normalizeProviderList } from "@/runtime/server/global-sync/utils"
 import { useModels } from "@/providers/models/models"
 import { cycleModelVariant, getConfiguredAgentVariant, resolveModelVariant } from "@/providers/models/variant"
 import { useComposerState } from "./persistence"
 import { useConfiguredModel } from "@/providers/models/configured"
 import { consoleProviderGroup, consoleProviderName } from "@/providers/catalog/console"
+import { useGlobal } from "@/runtime/server/runtime"
 
 export function createComposerControls(input: { model?: ModelSelection } = {}) {
   const local = useLocal()
   const sdk = useWorkspaceLocation()
   const data = useData()
   const providers = useProviders(() => sdk().directory)
+  const models = useGlobal().models
 
   const canonical = (provider: { id: string; canonical?: string }) =>
     provider.canonical ?? provider.id.replace(/^console-/, "")
 
   // Like the model picker, a Console-managed provider drops its "Workspace / " prefix unless the
   // same provider is also connected directly and the workspace is what tells them apart.
-  const providerName = (providerID: string) => {
-    const provider = providers.all().get(providerID)
+  const providerName = (providerID: string, catalog = providers.all()) => {
+    const provider = catalog.get(providerID)
 
     if (!provider) return providerID
-    const all = [...providers.all().values()]
+    const all = [...catalog.values()]
     const managed = consoleProviderGroup(all)
 
     if (!managed?.providers.includes(provider)) return provider.name
@@ -35,6 +37,53 @@ export function createComposerControls(input: { model?: ModelSelection } = {}) {
 
     return direct ? provider.name : consoleProviderName(managed, provider.name)
   }
+
+  const loading = () => {
+    const selection = input.model ?? local.model
+
+    return (
+      !selection.ready() || data.location.agent.list({ directory: sdk().directory }) === undefined || !providers.ready()
+    )
+  }
+
+  // A Location visited earlier nearly always lists the same model, so its loaded catalog names the chips while this
+  // Location's lists load; the loaded names then replace them in place.
+  const preview = createMemo(() => {
+    if (!loading()) return
+    const expected = (input.model ?? local.model).preview?.()
+
+    if (!expected) return
+
+    const match = data.session
+      .list()
+      .values()
+      .map((item) => {
+        const provider = data.location.provider.list(item.location)
+        const catalog = data.location.model.list(item.location)
+
+        if (!provider || !catalog) return
+        const all = normalizeProviderList(provider, catalog).all
+
+        return { all, model: all.get(expected.model.providerID)?.models[expected.model.modelID] }
+      })
+      .find((item) => !!item?.model)
+
+    if (!match?.model) return
+    const variants = Object.keys(match.model.variants ?? {})
+
+    return {
+      provider: providerName(expected.model.providerID, match.all),
+      model: match.model.name,
+      variants,
+      variant:
+        resolveModelVariant({
+          variants,
+          selected: expected.selected,
+          configured: undefined,
+          preferred: models.store.variant?.[`${expected.model.providerID}/${expected.model.modelID}`],
+        }) ?? "default",
+    }
+  })
 
   return createMemo<ComposerControls>(() => {
     const selection = input.model ?? local.model
@@ -54,10 +103,8 @@ export function createComposerControls(input: { model?: ModelSelection } = {}) {
         providerName: key && providerName(key.providerID),
         paid: providers.paid().length > 0,
         // The session's model applies only to its agent, so resolve agents before showing a model.
-        loading:
-          !selection.ready() ||
-          data.location.agent.list({ directory: sdk().directory }) === undefined ||
-          !providers.ready(),
+        loading: loading(),
+        preview: preview(),
       },
     }
   })

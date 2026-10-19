@@ -27,6 +27,9 @@ export function Composer(props: {
   const language = useLanguage()
 
   const modelName = () => {
+    const preview = props.model.model.preview
+
+    if (preview) return preview.model
     const selection = props.model.model.selection
     const model = selection.current()
 
@@ -45,7 +48,7 @@ export function Composer(props: {
         borderUnderlay={props.borderUnderlay}
         readOnly={props.readOnly}
         class={props.class}
-        modelControlsVisible={!props.model.model.loading}
+        modelControlsVisible={!props.model.model.loading || !!props.model.model.preview}
         attachKeybind={command.keybindParts("file.attach")}
         attachShortcut={command.keybind("file.attach")}
         alternateKeybind={[formatKeybind("mod", language.t), "↵"]}
@@ -54,11 +57,12 @@ export function Composer(props: {
         modelControl={
           <ComposerModelControl
             loading={props.model.model.loading}
+            preview={!!props.model.model.preview}
             paid={props.model.model.paid}
             title={language.t("command.model.choose")}
             keybind={command.keybindParts("model.choose")}
             model={props.model.model.selection}
-            providerName={props.model.model.providerName}
+            providerName={props.model.model.preview?.provider ?? props.model.model.providerName}
             modelName={modelName()}
             onClose={props.model.restoreFocus}
             onUnpaidClick={() => dialog.show(() => <DialogSelectModelUnpaid model={props.model.model.selection} />)}
@@ -71,6 +75,7 @@ export function Composer(props: {
 
 function ComposerModelControl(props: {
   loading: boolean
+  preview: boolean
   paid: boolean
   title: string
   keybind: string[]
@@ -80,7 +85,8 @@ function ComposerModelControl(props: {
   onClose: () => void
   onUnpaidClick: () => void
 }) {
-  const shouldAnimate = createMemo<boolean>((previous) => previous ?? props.loading)
+  // A preview paints the chip in its resting state, and the loaded names replace it in place.
+  const shouldAnimate = createMemo<boolean>((previous) => previous ?? (props.loading && !props.preview))
   const mobile = createMediaQuery("(max-width: 767px)")
   const dialog = useDialog()
   const managed = createMemo(() => consoleModelGroup(props.model.list()))
@@ -113,7 +119,7 @@ function ComposerModelControl(props: {
   )
 
   return (
-    <Show when={!props.loading}>
+    <Show when={!props.loading || props.preview}>
       <Tooltip
         inactive={mobile()}
         contentClass={props.model.current() ? "!p-0 rounded-md" : undefined}
@@ -154,6 +160,8 @@ function ComposerModelControl(props: {
               style={{ height: "28px" }}
               onMouseDown={(event: MouseEvent) => event.preventDefault()}
               onClick={(event: MouseEvent) => {
+                if (props.loading) return
+
                 if (!props.paid) return props.onUnpaidClick()
                 // A pointer open keeps focus in the composer, so the dialog returns it to the caret. A keyboard open
                 // (a click with no pointer presses) returns focus to this trigger instead of moving it to the editor.

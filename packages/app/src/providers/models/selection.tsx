@@ -290,6 +290,22 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
       return models.find(item)
     })
 
+    // What `key` and `selected` will resolve to once the Location's agents and config load, read from state already
+    // here: a local draft, else the Session's durable model unless the draft picked another agent.
+    const preview = () => {
+      const draft = scope()
+
+      if (draft?.model) return { model: draft.model, selected: draft.variant }
+      const session = durable()
+
+      if (!session?.model || (draft?.agent && draft.agent !== session.agent)) return
+
+      return {
+        model: { providerID: session.model.providerID, modelID: session.model.id },
+        selected: session.model.variant ?? null,
+      }
+    }
+
     const configured = (model = current()) => {
       const item = agent.current()
 
@@ -399,6 +415,7 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
     const model = {
       ready: Object.assign(() => models.ready() && configuredModel.ready(), { promise: models.ready.promise }),
       key,
+      preview,
       current,
       recent,
       favorite: { list: favorite, toggle: models.favorite.toggle },
@@ -561,5 +578,5 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
   },
 })
 
-export type ModelSelection = Omit<ReturnType<typeof useLocal>["model"], "trackSessionCommit"> &
-  Partial<Pick<ReturnType<typeof useLocal>["model"], "trackSessionCommit">>
+export type ModelSelection = Omit<ReturnType<typeof useLocal>["model"], "trackSessionCommit" | "preview"> &
+  Partial<Pick<ReturnType<typeof useLocal>["model"], "trackSessionCommit" | "preview">>

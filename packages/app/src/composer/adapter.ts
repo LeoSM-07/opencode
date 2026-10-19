@@ -20,6 +20,8 @@ export type ComposerControls = {
     providerName?: string
     paid: boolean
     loading: boolean
+    /** While loading, the expected model's names from a catalog already loaded for another Location. */
+    preview?: { provider?: string; model: string; variant: string; variants: string[] }
   }
 }
 
