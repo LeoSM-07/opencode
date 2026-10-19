@@ -11,6 +11,7 @@ import { IconButton } from "@opencode/ui/icon-button"
 import { Tooltip } from "@opencode/ui/tooltip"
 import { useLanguage } from "@/runtime/i18n/language"
 import type { SessionQueueView } from "./queue"
+import "./queue-panel.css"
 
 // Pullout above the composer listing the prompts queued behind the current
 // turn. The panel slides under the composer card (negative margin, opaque
@@ -66,6 +67,7 @@ export function SessionQueuePanel(props: { queue: SessionQueueView }) {
           {/* Four 32px rows, four 1px gaps, and half a row hint at more queued prompts. */}
           <div
             ref={listRef}
+            data-slot="session-queue-list"
             class="flex flex-col gap-px"
             classList={{ "max-h-[148px] overflow-y-auto": count() > 4 }}
             style={{

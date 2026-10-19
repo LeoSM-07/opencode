@@ -18,7 +18,7 @@ import { makeEventListener } from "@solid-primitives/event-listener"
 
 type DialogElement = () => JSX.Element
 
-type FocusReturn = { element: HTMLElement; range?: Range }
+type FocusReturn = { element: HTMLElement; visible: boolean; range?: Range }
 
 type Active = {
   id: string
@@ -265,12 +265,14 @@ function captureFocus(): FocusReturn | undefined {
 
   if (!(element instanceof HTMLElement) || element === document.body) return
   const selection = document.getSelection()
+  // Closing with Escape counts as keyboard use, so Chromium would ring a control the pointer had focused.
+  const visible = element.matches(":focus-visible")
 
   if (!element.isContentEditable || !selection?.rangeCount || !element.contains(selection.anchorNode)) {
-    return { element }
+    return { element, visible }
   }
 
-  return { element, range: selection.getRangeAt(0).cloneRange() }
+  return { element, visible, range: selection.getRangeAt(0).cloneRange() }
 }
 
 /** Kobalte only returns focus to a dialog trigger, and these dialogs open without one. */
@@ -281,7 +283,7 @@ function returnFocus(focus: FocusReturn | undefined, layer: HTMLElement | undefi
 
   // Something outside the closed dialog already has focus, for example because the dialog's onClose moved it.
   if (active && active !== document.body && !layer?.contains(active)) return
-  focus.element.focus({ preventScroll: true })
+  focus.element.focus({ preventScroll: true, focusVisible: focus.visible })
 
   if (!focus.range || !focus.element.contains(focus.range.commonAncestorContainer)) return
   const selection = document.getSelection()

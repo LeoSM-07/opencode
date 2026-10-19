@@ -1,6 +1,7 @@
 import { Overlay, Portal, Root, Trigger } from "@kobalte/core/dialog"
 import { Dialog, DialogBody, DialogFooter, DialogHeader, DialogTitle, DialogTitleGroup } from "./dialog"
 import { Button } from "@opencode/ui/button"
+import { useDialog } from "@opencode/ui/context/dialog"
 
 const docs = `### Overview
 Dialog content wrapper built on Kobalte's dialog primitive with v2 styling.
@@ -203,4 +204,28 @@ export const Fit = {
       </Portal>
     </Root>
   ),
+}
+
+function OpenFromButton() {
+  const dialog = useDialog()
+
+  return (
+    <Button
+      variant="neutral"
+      onClick={() =>
+        dialog.show(() => (
+          <Dialog>
+            {dialogHeader("Choose model", "Pick Alpha or Beta")}
+            <DialogBody>Alpha and Beta are available.</DialogBody>
+          </Dialog>
+        ))
+      }
+    >
+      Choose model
+    </Button>
+  )
+}
+
+export const OpenedFromButton = {
+  render: () => <OpenFromButton />,
 }
