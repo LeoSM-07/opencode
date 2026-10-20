@@ -33,6 +33,7 @@ import { useExtensionHost } from "./host"
 import { Contribution } from "./render"
 import { useExtensionAttachment } from "./attachment"
 import { legacyKeys, panelKey } from "./panel-keys"
+import type { createClosedTabs } from "./closed-tabs"
 
 type Tabs = Accessor<{
   all(): string[]
@@ -95,6 +96,7 @@ export function createRegion(input: {
   view: Accessor<MountedSession>
   screen: SessionScreen
   tabs: Tabs
+  closed: ReturnType<typeof createClosedTabs>
   /** Runs when a close leaves no stored tab, in the same batch as the close. */
   onEmptied?: () => void
 }) {
@@ -238,6 +240,9 @@ export function createRegion(input: {
     close(key: string) {
       const entry = byKey().get(key)
       const last = stored().length === 1 && stored()[0] === key
+      const reopen = entry?.provider.reopen?.(panelInput(input.view, input.screen, { tab: entry.tab }))
+
+      if (reopen) input.closed.push(input.view().key, reopen)
       batch(() => {
         input.tabs().close(key)
 
@@ -251,6 +256,7 @@ export function createRegion(input: {
           }),
         )
     },
+    reopen: () => input.closed.reopen(input.view().key),
   }
 }
 

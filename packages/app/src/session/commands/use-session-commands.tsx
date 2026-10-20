@@ -18,6 +18,7 @@ import type { SessionRevert } from "@/session/revert"
 import { Command } from "@opencode/gui-extensions/sdk"
 import { useExtensionHost } from "@/runtime/extension/host"
 import type { Region } from "@/runtime/extension/panels"
+import { createSideFocus } from "@/runtime/extension/closed-tabs"
 
 type SessionCommandSource = {
   identity: SessionModel["identity"]
@@ -81,6 +82,7 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
     return entry && !entry.tab.pinned ? entry.key : undefined
   }
 
+  const inSide = createSideFocus()
   const cycleSideTabs = () => actions.session.layout.view().side.opened() && actions.region.keys().length > 1
 
   // Focus inside an extension command's scope belongs to that extension, which binds its own shortcuts there.
@@ -405,6 +407,15 @@ export const useSessionCommands = (actions: SessionCommandContext) => {
           when: (event) => !extensionScoped(event.target),
           onSelect: closeTab,
         }),
+      // As in a browser: in the side panel, ⌘⇧T reopens a side tab rather than a session tab.
+      fileCommand({
+        id: "file.tab.reopen",
+        title: language.t("command.tab.reopenClosed"),
+        keybind: settings.keybinds.get("tab.reopenClosed") ?? "mod+shift+t",
+        hidden: true,
+        when: inSide,
+        onSelect: actions.region.reopen,
+      }),
       cycle &&
         fileCommand({
           id: "file.tab.prev",

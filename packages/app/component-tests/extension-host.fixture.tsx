@@ -37,6 +37,7 @@ import { createHostApis } from "../src/runtime/extension/host-apis"
 import { createInstalled } from "../src/runtime/extension/installed"
 import { extensionEnabled } from "@opencode/gui-extensions/sdk/bridge"
 import { createRegion, RegionContent } from "../src/runtime/extension/panels"
+import { createClosedTabs } from "../src/runtime/extension/closed-tabs"
 import { ExtensionSlot } from "../src/runtime/extension/render"
 import { persistedHandle } from "../src/runtime/extension/stores"
 import { LanguageProvider } from "../src/runtime/i18n/language"
@@ -423,6 +424,7 @@ export function mountSessionRegion(input: { definitions: readonly Definition[]; 
         close() {},
         remap() {},
       }),
+      closed: createClosedTabs(),
     })
 
     return (

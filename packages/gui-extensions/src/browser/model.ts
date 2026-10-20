@@ -533,6 +533,11 @@ export function createModel(ctx: SetupContext<typeof definition>) {
 
       if (item) command(session, { type: "tabs.close", tabID: item.id })
     },
+    /** Closes a tab through the strip, as its close button does, so ⌘⇧T can reopen it. */
+    close(session: SessionRef, tabID: string) {
+      if (layout.state(key(tabID), session) === "closed") return this.closeTab(session, tabID)
+      layout.close(key(tabID), session)
+    },
     focusTab(session: Session, tabID: string) {
       const item = tab(session, tabID)
 

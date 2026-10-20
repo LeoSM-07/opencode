@@ -398,7 +398,7 @@ export default function SessionBrowserPane(props: {
       close: () => {
         const tab = state()
 
-        if (tab) props.model.closeTab(props.session, tab.id)
+        if (tab) props.model.close(props.session, tab.id)
       },
       inspectable,
       inspect: toggleInspect,

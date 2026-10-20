@@ -244,6 +244,13 @@ const setup: Setup<typeof definition> = (ctx) => {
       </Show>
     ),
     close: (input) => model()?.closeTab(input.session, input.tab.id),
+    // A blank new tab does not come back.
+    reopen(input) {
+      const session = input.session
+      const url = model()?.tab(session, input.tab.id)?.url
+
+      return url && url !== "about:blank" ? () => model()?.openURL(session, url) : undefined
+    },
     focus: (input) => model()?.focusTab(input.session, input.tab.id),
   })
 }

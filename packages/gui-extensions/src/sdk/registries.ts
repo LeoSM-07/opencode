@@ -315,6 +315,12 @@ export interface Panel {
    */
   close?(input: PanelProps): void
   /**
+   * Read as the user closes a tab: how ⌘⇧T in the side panel brings it back, or nothing if it cannot come back.
+   *
+   * @param input - The closing tab, routed session and owning screen. Capture what reopening needs now.
+   */
+  reopen?(input: PanelProps): (() => void) | undefined
+  /**
    * Runs when the tab becomes selected. `restored` is true for the selection the side region mounts with, e.g. the
    * tab selected before a reload, and false for every later selection change.
    *

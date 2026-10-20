@@ -9,6 +9,7 @@ const modules = {
   fixture: source("../../gui-extensions/src/browser/panel.fixture.tsx"),
   host: source("../src/runtime/extension/host.tsx"),
   panels: source("../src/runtime/extension/panels.tsx"),
+  closed: source("../src/runtime/extension/closed-tabs.ts"),
   language: source("../src/runtime/i18n/language.tsx"),
   browser: source("../../gui-extensions/src/browser/index.ts"),
   browserRenderer: source("../../gui-extensions/src/browser/renderer.tsx"),
@@ -40,6 +41,7 @@ story.beforeEach(async ({ mount, page }) => {
       settings,
       platform,
       solid,
+      closed,
     ] = await Promise.all([
       import(modules.fixture),
       import(modules.host),
@@ -53,15 +55,18 @@ story.beforeEach(async ({ mount, page }) => {
       import(modules.settings),
       import(modules.platform),
       import(modules.solid),
+      import(modules.closed),
       // Load the pane before mounting: Vite must not reload the page to optimize its dependencies mid-fixture.
       import(modules.browserPanel),
     ])
 
+    const closedTabs = closed.createClosedTabs()
     mountBrowserRegion({
       LanguageProvider: language.LanguageProvider,
       ExtensionHostProvider: host.ExtensionHostProvider,
       useExtensionHost: host.useExtensionHost,
-      createRegion: panels.createRegion,
+      createRegion: (region: Omit<Parameters<typeof panels.createRegion>[0], "closed">) =>
+        panels.createRegion({ ...region, closed: closedTabs }),
       definitions: [
         { ...browser.default, renderer: () => import(modules.browserRenderer) },
         { ...file.default, renderer: () => import(modules.fileRenderer) },
@@ -85,9 +90,12 @@ story.beforeEach(async ({ mount, page }) => {
         close: () => void
         review: () => void
         newSession: () => void
+        reopenSession: () => void
+        reopenSide: () => void
         shortcut: (shortcut: Accessor<string>) => void
       }) => {
         const command = commands.useCommand()
+        const inSide = closed.createSideFocus()
         const extensions = host.useExtensionHost()
         // What the side strip's + shows beside the browser item, through the host's own formatter.
         props.shortcut(() => {
@@ -108,6 +116,8 @@ story.beforeEach(async ({ mount, page }) => {
             keybind: "mod+t,mod+n",
             onSelect: props.newSession,
           },
+          { id: "tab.reopenClosed", title: "", keybind: "mod+shift+t", onSelect: props.reopenSession },
+          { id: "file.tab.reopen", title: "", keybind: "mod+shift+t", when: inSide, onSelect: props.reopenSide },
           {
             id: "review.toggle",
             title: "Toggle review",
@@ -286,6 +296,40 @@ story("opens a browser tab with ⌘T inside the pane and a session everywhere el
   await editor.press(`${mod}+t`)
   await expect(opens).toHaveText("3")
   await expect(sessions).toHaveText("1")
+})
+
+story("reopens a closed browser tab with ⌘⇧T after the side panel and a session tab elsewhere", async ({ page }) => {
+  const root = page.getByTestId("browser-region-fixture")
+  const mac = await page.evaluate(() => /Mac|iPhone|iPad|iPod/.test(navigator.platform))
+  const outside = root.getByRole("button", { name: "Beta", exact: true })
+  const editor = page.frameLocator('iframe[title="Browser page"]').getByRole("textbox", { name: "Editor page input" })
+  const opens = root.getByTestId("browser-opens")
+
+  // Dvorak's T sits on the K key.
+  const reopen = () =>
+    page.evaluate((meta) => {
+      const init = { key: "T", code: "KeyK", shiftKey: true, metaKey: meta, ctrlKey: !meta, bubbles: true }
+      document.body.dispatchEvent(new KeyboardEvent("keydown", init))
+    }, mac)
+
+  await expect(root.getByText("Registrations: 1", { exact: true })).toBeVisible()
+  await outside.click()
+  await expect(root.getByText("Registrations: 2", { exact: true })).toBeVisible()
+  await root.getByRole("button", { name: "First inventory", exact: true }).click()
+  await expect(root.getByRole("tab", { name: "Preview", exact: true })).toHaveAttribute("aria-selected", "true")
+
+  // The page hands ⌘W to the pane; the pane and the page go, leaving no focus.
+  await editor.press(`${mac ? "Meta" : "Control"}+w`)
+  await expect(root.getByTestId("selected")).toHaveText("file://beta.ts")
+
+  await reopen()
+  await expect(opens).toHaveText("1")
+
+  // Once the user is outside the side panel, ⌘⇧T reopens a session tab again.
+  await outside.click()
+  await reopen()
+  await expect(root.getByTestId("session-reopens")).toHaveText("1")
+  await expect(opens).toHaveText("1")
 })
 
 story("keeps a restored browser tab selected and undrawn until the desktop's first inventory", async ({ page }) => {
