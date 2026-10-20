@@ -87,23 +87,26 @@ export default Plugin.define({
       const color = yield* Effect.tryPromise(() =>
         ctx.ui.dialog.select({
           title: "Your message color",
-          current: defaults.color,
-          options: Array.from({ length: 8 }, (_, value) => {
-            const color = ctx.theme.categorical[value % ctx.theme.categorical.length][200]
+          current: defaults.color % ctx.theme.categorical.length,
+          options: ctx.theme.categorical.slice(0, 8).flatMap((scale, value, palette) => {
+            const color = scale[200]
+            if (palette.findIndex((candidate) => candidate[200].equals(color)) !== value) return []
             const title = (ctx.theme.source(color)?.hue ?? `Color ${value + 1}`)
               .replaceAll("-", " ")
               .replace(/\b\w/g, (letter) => letter.toUpperCase())
-            return {
-              title,
-              value,
-              get titleView() {
-                return (
-                  <span>
-                    <span style={{ fg: color }}>■</span> {title}
-                  </span>
-                )
+            return [
+              {
+                title,
+                value,
+                get titleView() {
+                  return (
+                    <span>
+                      <span style={{ fg: color }}>■</span> {title}
+                    </span>
+                  )
+                },
               },
-            }
+            ]
           }),
         }),
       )

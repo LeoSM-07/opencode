@@ -68,7 +68,9 @@ test("hosting captures the composer's selected model before anyone prompts", asy
     (frame) =>
       frame.includes("Your message color") && setup.renderer.currentFocusedRenderable instanceof InputRenderable,
   )
-  expect(colors.match(/■/g)).toHaveLength(8)
+  const labels = colors.split("\n").flatMap((line) => (line.includes("■") ? [line.split("■")[1].trim()] : []))
+  expect(labels.length).toBeGreaterThan(0)
+  expect(new Set(labels).size).toBe(labels.length)
   expect(colors).not.toContain("Color 1")
   setup.mockInput.pressEnter()
   expect(await requested.promise).toMatchObject({
