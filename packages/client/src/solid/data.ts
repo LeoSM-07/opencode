@@ -193,6 +193,10 @@ function createSync() {
     return entry.promise
   }
   return {
+    async clear() {
+      await Promise.allSettled([...state.values()].flatMap((entry) => (entry === true ? [] : [entry.promise])))
+      state.clear()
+    },
     run(key: string, load: () => Promise<void>) {
       const active = state.get(key)
       if (active === true) return Promise.resolve()
@@ -1384,6 +1388,48 @@ export function createData(config: CreateDataInput) {
   })
 
   const result = {
+    async reset(ref: LocationRef) {
+      settling.forEach(clearTimeout)
+      settling.clear()
+      await Promise.allSettled([
+        ...creating.values(),
+        ...sending.values(),
+        ...messageLoads.values(),
+        ...Array.from(compacting.values(), (entry) => entry.request),
+      ])
+      await sync.clear()
+      settling.forEach(clearTimeout)
+      settling.clear()
+      messageIndex.clear()
+      creating.clear()
+      sending.clear()
+      messageLoads.clear()
+      compacting.clear()
+      outbox.clear()
+      sessionOutbox.clear()
+      activeUpdates = undefined
+      pendingUpdates.clear()
+      batch(() => {
+        setStore(
+          reconcile({
+            session: {
+              info: {},
+              family: {},
+              active: {},
+              message: {},
+              messageCursor: {},
+              messageLoading: {},
+              pending: {},
+              permission: {},
+              form: {},
+            },
+            project: { info: {}, permission: {} },
+            location: {},
+          }),
+        )
+        setDefaultLocation(ref)
+      })
+    },
     on: config.event.on,
     listen: config.event.listen,
     session: {

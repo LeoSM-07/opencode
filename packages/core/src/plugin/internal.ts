@@ -105,6 +105,7 @@ import { VcsGitPlugin } from "./vcs/git.js"
 import { VerbosityPlugin } from "./verbosity.js"
 import { WarmingPlugin } from "./warming.js"
 import { WellKnownPlugin } from "../wellknown/plugin.js"
+import Multiplayer from "@opencode/multiplayer/server"
 
 const services = [
   Agent.Service,
@@ -252,6 +253,7 @@ const pre = [
 ] as const satisfies readonly InternalPlugin[]
 
 const post = [
+  Multiplayer,
   ConfigInstructionPlugin.Plugin,
   ConfigReferencePlugin.Plugin,
   ConfigAgentPlugin.Plugin,

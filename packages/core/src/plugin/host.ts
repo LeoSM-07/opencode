@@ -6,7 +6,7 @@ import { EventManifest } from "@opencode/schema/event-manifest"
 import type { Event } from "@opencode/schema/event"
 import { ServerConfig } from "@opencode/schema/mcp"
 import { App } from "../app.js"
-import { Effect, Schema, Stream } from "effect"
+import { Effect, Option, Schema, Stream } from "effect"
 import { Agent } from "../agent.js"
 import { AISDK } from "../aisdk.js"
 import { Command } from "../command.js"
@@ -36,6 +36,7 @@ import { Permission } from "../permission.js"
 import { PluginHooks } from "./hooks.js"
 import type { Interface } from "../plugin.js"
 import { LayerNode } from "@opencode/util/effect/layer-node"
+import { ServerFetch } from "./server-fetch.js"
 
 const mutable = <T>(value: T) => value as DeepMutable<T>
 type RpcEvent = Event.Payload & {
@@ -49,6 +50,9 @@ export const make = Effect.fn("PluginHost.make")(function* (
   pluginID: string = "test",
 ) {
   const app = yield* App.Metadata
+  const server = Option.getOrElse(yield* Effect.serviceOption(ServerFetch.Service), () => ({
+    fetch: () => Effect.fail(new Error("Host HTTP access is unavailable in this runtime")),
+  }))
   const agents = yield* Agent.Service
   const aisdk = yield* AISDK.Service
   const providers = yield* Provider.Service
@@ -114,6 +118,7 @@ export const make = Effect.fn("PluginHost.make")(function* (
   // Keep the instance graph's inferred types independent of Session handles.
   const context: Plugin.Context = {
     app,
+    server,
     location: locationInfo(),
     options: {},
     rpc: Object.assign(rpc.client, { register: rpc.register }),
@@ -593,6 +598,7 @@ export const make = Effect.fn("PluginHost.make")(function* (
 })
 
 export const requirements = LayerNode.group([
+  ServerFetch.node,
   App.node,
   Agent.node,
   AISDK.node,

@@ -27,6 +27,7 @@ export interface Context {
   readonly app: App
   readonly location: Location.Info
   readonly options: PluginOptions
+  readonly server: { readonly fetch: (request: Request) => Promise<Response> }
   readonly agent: AgentDomain
   readonly aisdk: AISDKDomain
   readonly command: CommandDomain

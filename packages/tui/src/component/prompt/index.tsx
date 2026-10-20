@@ -1278,6 +1278,8 @@ export function Prompt(props: PromptProps) {
 
     const target = sessionID
     const prepareAgent = async () => {
+      // Shared-server guests submit input without changing the host's selection.
+      if (client.external()) return
       if (!session) {
         await data.session.sync(target)
         session = data.session.get(target)
@@ -1287,6 +1289,7 @@ export function Prompt(props: PromptProps) {
       }
     }
     const commitModel = () => {
+      if (client.external()) return Promise.resolve()
       const model = { providerID: selection.providerID, id: selection.modelID, variant }
       const cancelCommit = local.model.trackSessionCommit(target, model, agent.id)
       return client.api.session.switchModel({ sessionID: target, model }).catch((error) => {
@@ -1760,6 +1763,7 @@ export function Prompt(props: PromptProps) {
               cursorStyle={config.cursor}
               onContentChange={() => {
                 const value = input.plainText
+                promptRef.changed({ sessionID: props.sessionID, text: value })
                 setStore("prompt", "text", value)
                 auto()?.onInput(value)
                 syncExtmarksWithPromptParts()

@@ -66,7 +66,7 @@ export const { use: useSessionTabs, provider: SessionTabsProvider } = createSimp
     const paths = useTuiPaths()
     const renderer = useRenderer()
     const storage = useStorage()
-    const enabled = () => config.tabs.enabled
+    const enabled = () => config.tabs.enabled && !client.external()
     const [focused, setFocused] = createSignal<boolean>()
     // Keyed reconcile keeps tab object identity across reorders, so strip rows move instead of
     // mutating in place, which per-row animations and drag state depend on.
@@ -108,6 +108,7 @@ export const { use: useSessionTabs, provider: SessionTabsProvider } = createSimp
     }
 
     function update(mutation: (draft: TabsState) => void) {
+      if (client.external()) return
       const scope = config.tabs.scope
       void updateStore((draft) => mutation(scope === "cwd" ? (draft.cwd[paths.cwd] ??= empty()) : draft.global)).catch(
         // Failed writes lose only tab layout, but silence would hide tabs resetting every launch.
@@ -180,6 +181,7 @@ export const { use: useSessionTabs, provider: SessionTabsProvider } = createSimp
     createProgramStatus({
       renderer,
       sessions: () => {
+        if (client.external()) return []
         const viewed = route.data.type === "session" && route.data.sessionID !== "dummy" ? current() : undefined
         const tabs = enabled() ? state().tabs.map((tab) => tab.sessionID) : []
         return Array.from(new Set(viewed ? [...tabs, viewed] : tabs)).flatMap((sessionID): PendingSession[] => {
@@ -340,6 +342,7 @@ export const { use: useSessionTabs, provider: SessionTabsProvider } = createSimp
     )
     onCleanup(
       event.on("session.deleted", (evt) => {
+        if (client.external()) return
         const target = root(evt.data.sessionID)
         setClosedTabs((entries) => entries.filter((entry) => entry.tab.sessionID !== target))
         remove(evt.data.sessionID, enabled())
@@ -398,6 +401,7 @@ export const { use: useSessionTabs, provider: SessionTabsProvider } = createSimp
         return scrollAnchors.get(sessionID)
       },
       setScrollAnchor(sessionID: string, anchor: ScrollAnchor | undefined) {
+        if (client.external()) return
         const target = root(sessionID)
         if (anchor === undefined || !state().tabs.some((tab) => tab.sessionID === target)) {
           scrollAnchors.delete(sessionID)
@@ -412,6 +416,7 @@ export const { use: useSessionTabs, provider: SessionTabsProvider } = createSimp
         return expandedGroups[sessionID]?.[groupID]
       },
       setGroupExpanded(sessionID: string, groupID: string, expanded: boolean) {
+        if (client.external()) return
         setExpandedGroups(sessionID, (current) => ({ ...current, [groupID]: expanded }))
       },
       select(sessionID: string) {

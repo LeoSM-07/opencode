@@ -28,6 +28,7 @@ export function host(overrides: Overrides = {}): Plugin.Context {
         },
       }),
     options: {},
+    server: overrides.server ?? { fetch: () => Effect.die("unused server.fetch") },
     rpc:
       overrides.rpc ??
       Object.assign(

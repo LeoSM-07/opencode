@@ -248,6 +248,17 @@ export function createClientConnection(initialApi: OpenCodeClient, options: Clie
   })
 
   return {
+    suspend() {
+      stop()
+      if (flushTimer) clearTimeout(flushTimer)
+      flushTimer = undefined
+      pending = []
+    },
+    replace(next: OpenCodeClient) {
+      this.suspend()
+      api = next
+      void start()
+    },
     status: () => connection.status,
     attempt: () => connection.attempt,
     error: () => connection.error,

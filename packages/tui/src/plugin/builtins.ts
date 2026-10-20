@@ -11,9 +11,11 @@ import Plugins from "../feature-plugins/system/plugins"
 import Storybook from "../feature-plugins/system/storybook"
 import Stats from "../feature-plugins/system/stats"
 import Latex from "@opencode/latex/plugin"
+import Multiplayer from "@opencode/multiplayer/tui"
 import Merman from "@opencode/merman/plugin"
 
 export const builtins = [
+  Multiplayer,
   HomeFooter,
   PromptFooter,
   PromptBtw,

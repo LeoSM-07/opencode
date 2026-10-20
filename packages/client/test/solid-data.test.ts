@@ -14,6 +14,38 @@ const session = (viewed: number): SessionInfo => ({
   location: { directory: "/project" },
 })
 
+test("reset isolates colliding session IDs across connections and restores the default location", async () => {
+  const target = { label: "local" }
+  const api = OpenCode.make({
+    baseUrl: "http://opencode.local",
+    fetch: async () =>
+      Response.json({
+        data: [{ id: "msg_same", type: "user", text: target.label, time: { created: 1 } }],
+        cursor: {},
+      }),
+  })
+  const setup = createRoot((dispose) => ({
+    data: createData({ api: () => api, directory: "/local", event: { on: () => () => {}, listen: () => () => {} } }),
+    dispose,
+  }))
+  try {
+    await setup.data.session.message.sync("ses_same")
+    expect(setup.data.session.message.list("ses_same")[0]).toMatchObject({ text: "local" })
+    await setup.data.reset({ directory: "/host" })
+    target.label = "room"
+    expect(setup.data.session.message.list("ses_same")).toEqual([])
+    expect(setup.data.location.default()).toEqual({ directory: "/host" })
+    await setup.data.session.message.sync("ses_same")
+    expect(setup.data.session.message.list("ses_same")[0]).toMatchObject({ text: "room" })
+    await setup.data.reset({ directory: "/local" })
+    target.label = "local"
+    await setup.data.session.message.sync("ses_same")
+    expect(setup.data.session.message.list("ses_same")[0]).toMatchObject({ text: "local" })
+  } finally {
+    setup.dispose()
+  }
+})
+
 test("uses the configured initial window and retains normal cursor page sizes", async () => {
   const requests: { limit: string | null; cursor: string | null }[] = []
   const api = OpenCode.make({

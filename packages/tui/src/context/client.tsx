@@ -1,7 +1,7 @@
 import type { OpenCodeClient, OpenCodeEvent } from "@opencode/client"
 import { createClientConnection, createPersistentPtyClient } from "@opencode/client/solid"
 import { createGlobalEmitter } from "@solid-primitives/event-bus"
-import { onCleanup } from "solid-js"
+import { batch, createSignal, onCleanup } from "solid-js"
 import { createSimpleContext } from "./helper"
 import { useLog } from "./log"
 
@@ -17,6 +17,8 @@ export const { use: useClient, provider: ClientProvider } = createSimpleContext(
   init: (props: { api: OpenCodeClient; url?: string; service?: ManagedService }) => {
     const log = useLog({ component: "client" })
     const service = props.service
+    const [external, setExternal] = createSignal(false)
+    const [switching, setSwitching] = createSignal(false)
     const events = createGlobalEmitter<ClientEventMap>()
     let api = props.api
     let url = props.url
@@ -25,6 +27,7 @@ export const { use: useClient, provider: ClientProvider } = createSimpleContext(
     const connection = createClientConnection(api, {
       reconnect: service
         ? async (signal) => {
+            if (external()) return api
             const next = await service.reconnect(signal)
             api = next.api
             if (next.url) url = next.url
@@ -43,6 +46,22 @@ export const { use: useClient, provider: ClientProvider } = createSimpleContext(
     })
 
     return {
+      external: () => external() || switching(),
+      suspend() {
+        setSwitching(true)
+        connection.suspend()
+      },
+      target: () => ({ api, url }),
+      replace(next: { api: OpenCodeClient; url?: string; external?: boolean }) {
+        batch(() => {
+          api = next.api
+          url = next.url
+          setExternal(next.external ?? false)
+          persistentPty = url && !external() ? createPersistentPtyClient(api, { url }) : undefined
+          connection.replace(api)
+          setSwitching(false)
+        })
+      },
       get api() {
         return api
       },
@@ -55,7 +74,9 @@ export const { use: useClient, provider: ClientProvider } = createSimpleContext(
         listen: events.listen,
       },
       connection,
-      restart: service?.restart,
+      get restart() {
+        return external() ? undefined : service?.restart
+      },
     }
   },
 })

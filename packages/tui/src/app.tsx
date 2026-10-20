@@ -504,6 +504,7 @@ function App() {
     if (paletteTimer) clearTimeout(paletteTimer)
   })
   createEffect(() => {
+    if (client.external()) return
     if (client.connection.status() !== "connected") return
     if (route.data.type !== "session") return
     const session = data.session.get(route.data.sessionID)

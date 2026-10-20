@@ -2,6 +2,7 @@ export * as ServerProcess from "./process"
 
 import { NodeHttpServer } from "@effect/platform-node"
 import { Bus } from "@opencode/core/bus"
+import { ServerFetch } from "@opencode/core/plugin/server-fetch"
 import { SessionRestart } from "@opencode/core/session/execution/restart"
 import { InstallationEvent } from "@opencode/schema/installation-event"
 import { hasPtyConnectTicketURL } from "@opencode/protocol/groups/pty"
@@ -101,6 +102,29 @@ export const start = Effect.fn("ServerProcess.start")(function* <E, R>(
           password,
         },
         urls,
+        [
+          ServerFetch.node.replace(
+            Layer.succeed(ServerFetch.Service, {
+              fetch: (request) =>
+                Effect.tryPromise({
+                  try: (signal) => {
+                    const url = new URL(request.url)
+                    const headers = new Headers(request.headers)
+                    headers.set("authorization", `Basic ${Buffer.from(`opencode:${password}`).toString("base64")}`)
+                    headers.delete("host")
+                    return fetch(new URL(url.pathname + url.search, localURLs()[0]), {
+                      method: request.method,
+                      headers,
+                      body: request.body,
+                      ...{ duplex: "half" },
+                      signal: AbortSignal.any([signal, request.signal]),
+                    })
+                  },
+                  catch: (error) => error,
+                }),
+            }),
+          ),
+        ],
       ).pipe(Layer.provideMerge(NodeHttpServer.layerHttpServices)),
       applicationScope,
     )

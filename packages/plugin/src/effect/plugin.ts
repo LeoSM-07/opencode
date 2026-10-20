@@ -27,6 +27,8 @@ export interface Context {
   readonly app: App
   readonly location: Location.Info
   readonly options: PluginOptions
+  /** Dispatch through the host API without exposing its credentials. */
+  readonly server: { readonly fetch: (request: Request) => Effect.Effect<Response, unknown> }
   readonly agent: AgentDomain
   readonly aisdk: AISDKDomain
   readonly command: CommandDomain

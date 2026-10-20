@@ -1,3 +1,4 @@
+import { AuthorLabel, authorColor, readAuthor } from "@opencode/multiplayer/author"
 import {
   batch,
   createEffect,
@@ -2234,9 +2235,15 @@ function UserMessage(props: { message: SessionMessageUser }) {
   )
   const themes = useThemes()
   const theme = useTheme()
+  const author = createMemo(() => readAuthor(props.message.metadata?.author))
   const mode = themes.mode
   const [hover, setHover] = createSignal(false)
-  const color = createMemo(() => local.agent.color(data.session.get(ctx.sessionID)?.agent ?? "build"))
+  const color = createMemo(() => {
+    const participant = author()
+    return participant
+      ? authorColor(participant, theme)
+      : local.agent.color(data.session.get(ctx.sessionID)?.agent ?? "build")
+  })
   const delivery = createMemo(() => ctx.pendingDelivery(props.message.id))
   const dialog = useDialog()
   const renderer = useRenderer()
@@ -2250,7 +2257,7 @@ function UserMessage(props: { message: SessionMessageUser }) {
     <Show when={props.message.text.trim() || files().length || skills().length}>
       <box
         border={["left"]}
-        borderColor={delivery() ? theme.border.base : color()}
+        borderColor={delivery() && !author() ? theme.border.base : color()}
         customBorderChars={SplitBorder.customBorderChars}
         backgroundColor={theme.background.raised.base}
       >
@@ -2296,6 +2303,7 @@ function UserMessage(props: { message: SessionMessageUser }) {
           backgroundColor={hover() ? theme.decrease(theme.background.raised.base) : theme.background.raised.base}
           flexShrink={0}
         >
+          <Show when={author()}>{(value) => <AuthorLabel author={value()} theme={theme} />}</Show>
           <text fg={theme.text.base}>{props.message.text}</text>
           <Show when={skills().length}>
             <box flexDirection="row" paddingTop={1} gap={1} flexWrap="wrap">

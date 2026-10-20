@@ -354,6 +354,8 @@ export interface DialogPromptOptions {
 
 export interface DialogSelectOption<Value> {
   readonly title: string
+  /** Rich display title; the plain title remains available for search. */
+  readonly titleView?: JSX.Element
   readonly value: Value
   readonly description?: string
   readonly footer?: string
@@ -488,6 +490,19 @@ export interface Keymap {
 }
 
 export interface UI {
+  readonly prompt: {
+    onChange(listener: (input: { readonly sessionID?: string; readonly text: string }) => void): () => void
+  }
+  readonly connection: {
+    external(): boolean
+    current(): { readonly api: OpenCodeClient; readonly url?: string; readonly location: LocationRef }
+    replace(target: {
+      readonly api: OpenCodeClient
+      readonly url?: string
+      readonly location: LocationRef
+      readonly external?: boolean
+    }): Promise<void>
+  }
   readonly dialog: Dialog
   readonly toast: Toast
   readonly format: {

@@ -14,6 +14,7 @@ import type { Placement, PlacementKind } from "./structure"
 import { infoStringToFiletype, type MarkdownCodeBlockRenderer } from "@opentui/core"
 import { useRenderer } from "@opentui/solid"
 import { useClient } from "../context/client"
+import { usePromptRef } from "../context/prompt"
 import { useData } from "../context/data"
 import { Keymap } from "../context/keymap"
 import { useRoute } from "../context/route"
@@ -66,6 +67,7 @@ export function usePluginHost() {
     owner: getOwner(),
     renderer: useRenderer(),
     client: useClient(),
+    prompt: usePromptRef(),
     data: useData(),
     route: useRoute(),
     keymap: Keymap.use(),
@@ -156,7 +158,9 @@ export function createPluginContext(input: {
     },
     app: { version: host.app.version, channel: host.app.channel },
     renderer: host.renderer,
-    client: host.client.api,
+    get client() {
+      return host.client.api
+    },
     data: host.data,
     attention: host.attention,
     get theme() {
@@ -202,6 +206,24 @@ export function createPluginContext(input: {
       memory: (key, options) => host.storage.memory(`plugin.${input.id}.${key}`, options),
     },
     ui: {
+      prompt: {
+        onChange(listener) {
+          const stop = host.prompt.onChange(listener)
+          input.owned.push(async () => stop())
+          return stop
+        },
+      },
+      connection: {
+        external: host.client.external,
+        current: () => ({ ...host.client.target(), location: host.data.location.default() }),
+        async replace(target) {
+          host.client.suspend()
+          host.route.navigate({ type: "home" })
+          await host.data.reset(target.location)
+          host.client.replace(target)
+          host.location.set(target.location)
+        },
+      },
       dialog: dialogApi,
       toast: toastApi,
       format: {

@@ -5,6 +5,30 @@ import { OpenCode, type OpenCodeEvent } from "../src/promise"
 
 const connected = { id: "evt_connected", created: 1, type: "server.connected", data: {} }
 
+test("connection replacement isolates streams and restores the original server", async () => {
+  const local = server()
+  const room = server()
+  const ctx = setup(local, 45_000)
+  try {
+    await until(() => local.streams.length === 1)
+    local.streams[0].write(`data: ${JSON.stringify(connected)}\n\n`)
+    await until(() => ctx.events.length === 1)
+    ctx.connection.replace(room.api)
+    await until(() => room.streams.length === 1)
+    expect(local.streams[0].aborted).toBe(true)
+    room.streams[0].write(`data: ${JSON.stringify({ ...connected, id: "evt_room" })}\n\n`)
+    await until(() => ctx.events.length === 2)
+    ctx.connection.replace(local.api)
+    await until(() => local.streams.length === 2)
+    expect(room.streams[0].aborted).toBe(true)
+    local.streams[1].write(`data: ${JSON.stringify({ ...connected, id: "evt_restored" })}\n\n`)
+    await until(() => ctx.events.length === 3)
+    expect(ctx.events.map((event) => event.id)).toEqual(["evt_connected", "evt_room", "evt_restored"])
+  } finally {
+    ctx.dispose()
+  }
+})
+
 // One fake server whose event streams stay open until the test writes to them or the client aborts.
 function server() {
   const encoder = new TextEncoder()

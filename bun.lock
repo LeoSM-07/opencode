@@ -274,6 +274,7 @@
         "@opencode-ai/pty": "0.3.1",
         "@opencode/ai": "workspace:*",
         "@opencode/codemode": "workspace:*",
+        "@opencode/multiplayer": "workspace:*",
         "@opencode/plugin": "workspace:*",
         "@opencode/plugin-browser": "workspace:*",
         "@opencode/schema": "workspace:*",
@@ -493,6 +494,27 @@
         "@tsconfig/bun": "catalog:",
         "@types/bun": "catalog:",
         "@typescript/native": "catalog:",
+      },
+    },
+    "packages/multiplayer": {
+      "name": "@opencode/multiplayer",
+      "version": "2.0.32",
+      "dependencies": {
+        "@opencode/client": "workspace:*",
+        "@opencode/plugin": "workspace:*",
+        "@opencode/schema": "workspace:*",
+        "@opencode/theme": "workspace:*",
+        "@opentunnel/client": "0.4.0",
+        "effect": "catalog:",
+        "solid-js": "catalog:",
+        "ws": "8.21.0",
+      },
+      "devDependencies": {
+        "@opentui/core": "catalog:",
+        "@opentui/solid": "catalog:",
+        "@tsconfig/bun": "catalog:",
+        "@types/bun": "catalog:",
+        "@types/ws": "8.18.1",
       },
     },
     "packages/plugin": {
@@ -828,6 +850,7 @@
         "@opencode/core": "workspace:*",
         "@opencode/latex": "workspace:*",
         "@opencode/merman": "workspace:*",
+        "@opencode/multiplayer": "workspace:*",
         "@opencode/plugin": "workspace:*",
         "@opencode/schema": "workspace:*",
         "@opencode/simulation": "workspace:*",
@@ -2032,6 +2055,8 @@
     "@opencode/latex": ["@opencode/latex@workspace:packages/latex"],
 
     "@opencode/merman": ["@opencode/merman@workspace:packages/merman"],
+
+    "@opencode/multiplayer": ["@opencode/multiplayer@workspace:packages/multiplayer"],
 
     "@opencode/plugin": ["@opencode/plugin@workspace:packages/plugin"],
 

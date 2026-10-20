@@ -1,0 +1,34 @@
+{
+  "name": "@opencode/multiplayer",
+  "version": "2.0.32",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/server.ts",
+    "./server": "./src/server.ts",
+    "./tui": "./src/tui.tsx",
+    "./protocol": "./src/protocol.ts",
+    "./author": "./src/author.tsx"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@opencode/plugin": "workspace:*",
+    "@opencode/schema": "workspace:*",
+    "@opencode/client": "workspace:*",
+    "@opencode/theme": "workspace:*",
+    "@opentunnel/client": "0.4.0",
+    "effect": "catalog:",
+    "ws": "8.21.0",
+    "solid-js": "catalog:"
+  },
+  "devDependencies": {
+    "@tsconfig/bun": "catalog:",
+    "@types/bun": "catalog:",
+    "@types/ws": "8.18.1",
+    "@opentui/core": "catalog:",
+    "@opentui/solid": "catalog:"
+  }
+}

@@ -293,6 +293,7 @@ export function fromPromise(plugin: Plugin) {
 
         const context2: PromiseContext = {
           app: host.app,
+          server: { fetch: (request) => run(host.server.fetch(request)) },
           location: host.location,
           options: host.options,
           agent: {
