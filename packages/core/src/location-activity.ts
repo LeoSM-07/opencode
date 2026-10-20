@@ -46,39 +46,24 @@ export function layer(options: { readonly timeToLive?: Duration.Input; readonly 
         for (const id of entries.keys()) {
           if (!cached.has(id)) entries.delete(id)
         }
+        // A long tool call or a pending question emits no durable events, so count active
+        // execution as activity. Invalidation would detach the graph it still borrows.
+        const active = yield* Effect.forEach(yield* execution.active, (sessionID) => sessions.get(sessionID))
+        for (const session of active) {
+          const entry = session && entries.get(key(session.location))
+          if (entry) yield* touch(entry.ref)
+        }
         const now = clock.currentTimeMillisUnsafe()
         const expired = Array.from(entries.values()).filter((entry) => entry.expiresAt <= now)
-        if (expired.length === 0) return
-        const active = yield* Effect.forEach(yield* execution.active, (sessionID) => sessions.get(sessionID))
         yield* Effect.forEach(
           expired,
-          (entry) =>
-            Effect.gen(function* () {
-              const owners = active.flatMap((session) =>
-                session && key(session.location) === key(entry.ref) ? [session] : [],
-              )
-              // Invalidation only detaches the cache entry; borrowers retain the old
-              // graph. Stop its executions and settle tool cleanup before detaching it.
-              yield* Effect.forEach(
-                owners,
-                (session) => execution.interrupt(session.id, { reason: "inactivity", awaitSettlement: true }),
-                {
-                  discard: true,
-                  concurrency: "unbounded",
-                },
-              )
-              const remaining = yield* Effect.forEach(yield* execution.active, (sessionID) => sessions.get(sessionID))
-              // New work admitted during cleanup may now own the cached graph.
-              if (remaining.some((session) => session && key(session.location) === key(entry.ref))) {
-                yield* touch(entry.ref)
-                return
-              }
-              entries.delete(key(entry.ref))
-              yield* Effect.logInfo("location services evicted", {
-                directory: entry.ref.directory,
-                workspaceID: entry.ref.workspaceID,
-              }).pipe(Effect.andThen(locations.invalidate(entry.ref)))
-            }),
+          (entry) => {
+            entries.delete(key(entry.ref))
+            return Effect.logInfo("location services evicted", {
+              directory: entry.ref.directory,
+              workspaceID: entry.ref.workspaceID,
+            }).pipe(Effect.andThen(locations.invalidate(entry.ref)))
+          },
           { discard: true, concurrency: "unbounded" },
         )
       }).pipe(Effect.forever, Effect.forkScoped)
